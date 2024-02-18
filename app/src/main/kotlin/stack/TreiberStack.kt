@@ -4,8 +4,16 @@ import java.util.concurrent.atomic.AtomicReference
 
 private class Node<T>(val value: T, val next: Node<T>?)
 
-class TreibersStack<T> {
+/**
+ * Lock-free stack implementation
+ */
+open class TreiberStack<T> {
     private val head: AtomicReference<Node<T>?> = AtomicReference(null)
+
+    /**
+     * PUSH and POP use a loop, which affects perfomance.
+     * This stack doesn't scale well to a large number of threads.
+     * */
 
     fun pop(): T? {
         while (true) {
