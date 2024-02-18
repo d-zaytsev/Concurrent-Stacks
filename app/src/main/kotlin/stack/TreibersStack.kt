@@ -28,5 +28,6 @@ class TreibersStack<T> {
     }
     fun peak() = head.get()?.value
     fun empty() = head.get() == null
-
+    private fun Node<T>.print() : String = "$value" + if (next != null) " -> ${next.print()}" else "."
+    override fun toString(): String = head.get()?.print() ?: "Empty stack"
 }

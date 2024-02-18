@@ -13,6 +13,7 @@ repositories {
 
 dependencies {
     testImplementation("org.jetbrains.kotlinx:lincheck:2.25")
+    testImplementation("junit:junit:4.13")
 
     // This dependency is used by the application.
     implementation(libs.guava)
@@ -31,4 +32,12 @@ application {
 }
 
 tasks.named<Test>("test") {
+}
+
+tasks.withType<Test> {
+    jvmArgs(
+            "--add-opens", "java.base/jdk.internal.misc=ALL-UNNAMED",
+            "--add-exports", "java.base/jdk.internal.util=ALL-UNNAMED",
+            "--add-exports", "java.base/sun.security.action=ALL-UNNAMED"
+    )
 }
