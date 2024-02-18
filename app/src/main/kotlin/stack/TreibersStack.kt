@@ -1,37 +1,32 @@
 package stack
 
-import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 
-private class Node<T>(val value: T, val next: Node<T>)
+private class Node<T>(val value: T, val next: Node<T>?)
 
 class TreibersStack<T> {
-    private val head: Node<T>? = null
+    private val head: AtomicReference<Node<T>?> = AtomicReference(null)
 
     fun pop(): T? {
-        val curHead = AtomicReference(head) // An object reference that is always updated atomically
-
         while (true) {
-            val expectedValue = curHead.get() // What we expect the head will be like
-            val newValue = expectedValue?.next ?: throw EmptyStackException()
+            val expectedValue = head.get() // What we expect the head will be
+            val newValue = expectedValue?.next
 
-            if (curHead.compareAndSet(expectedValue, newValue)) // if (what we expect) = (what we have)
-                return newValue.value
+            if (head.compareAndSet(expectedValue, newValue)) // if (what we expect) = (what we have)
+                return expectedValue?.value
         }
     }
 
     fun push(item: T) {
-        val curHead = AtomicReference(head)
-
         while (true) {
-            val expectedValue = curHead.get() ?: throw EmptyStackException()
+            val expectedValue = head.get()
             val newValue = Node(item, expectedValue)
 
-            if (curHead.compareAndSet(expectedValue, newValue))
+            if (head.compareAndSet(expectedValue, newValue))
                 return
         }
     }
-    fun peak() = head?.value
-    fun empty() = head == null
+    fun peak() = head.get()?.value
+    fun empty() = head.get() == null
 
 }
