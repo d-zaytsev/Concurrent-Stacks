@@ -5,10 +5,10 @@ import org.jetbrains.kotlinx.lincheck.check
 import org.jetbrains.kotlinx.lincheck.strategy.managed.modelchecking.ModelCheckingOptions
 import org.junit.Assert
 import org.junit.Test
-import stack.TreibersStack
+import stack.TreiberStack
 
 class StackTest {
-    private val stack = TreibersStack<Int>()
+    private val stack = TreiberStack<Int>()
 
     @Operation
     fun pop() = if (!stack.empty()) stack.pop() else null
@@ -23,7 +23,7 @@ class StackTest {
 
     @Test
     fun `Simple test`() {
-        val s = TreibersStack<Int>()
+        val s = TreiberStack<Int>()
         s.push(1)
         s.push(2)
         s.push(3)
@@ -34,7 +34,7 @@ class StackTest {
     }
     @Test
     fun `Representation test`() {
-        val s = TreibersStack<Int>()
+        val s = TreiberStack<Int>()
         s.push(1)
         s.push(2)
         s.push(3)
