@@ -17,21 +17,16 @@ private enum class ExchangerState() {
 private class Exchanger<T>(val value: T? = null, val state: ExchangerState = ExchangerState.EMPTY)
 
 /**
- * Just a node, nothing unusual
- */
-private class StackNode<T>(val value: T, val next: StackNode<T>?)
-
-/**
  * Lock-free elimination back-off stack.
  */
-class EliminationStack<T>(val capacity: Int) {
+class EliminationStack<T>(val capacity: Int) : TreiberStack<T>() {
 
-    private val head = AtomicReference<StackNode<T>?>(null)
+    override val head = AtomicReference<StackNode<T>?>(null)
 
     // We need an elimination array. It will be used to exchange information between threads.
     private val exchangersArray = Array(capacity) { AtomicReference<Exchanger<T>>() }
     private fun randomExchanger() = exchangersArray.random()
-    fun pop(): T? {
+    override fun pop(): T? {
         while (true) {
             val expectedValue = head.get()
             val newValue = expectedValue?.next
@@ -55,7 +50,7 @@ class EliminationStack<T>(val capacity: Int) {
         }
     }
 
-    fun push(item: T) {
+    override fun push(item: T) {
         while (true) {
             val expectedValue = head.get()
             val newValue = StackNode(item, expectedValue)
