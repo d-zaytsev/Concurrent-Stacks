@@ -8,12 +8,12 @@ private class Node<T>(val value: T, val next: Node<T>?)
  * Lock-free stack implementation
  */
 open class TreiberStack<T> {
-    private val head: AtomicReference<Node<T>?> = AtomicReference(null)
+    private val head = AtomicReference<Node<T>?>(null)
 
-    /**
-     * PUSH and POP use a loop, which affects perfomance.
+    /*
+     * PUSH and POP use a loop, which affects performance.
      * This stack doesn't scale well to a large number of threads.
-     * */
+     */
 
     fun pop(): T? {
         while (true) {
