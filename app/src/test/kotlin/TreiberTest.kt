@@ -7,7 +7,7 @@ import org.junit.Assert
 import org.junit.Test
 import stack.TreiberStack
 
-class StackTest {
+class TreiberTest {
     private val stack = TreiberStack<Int>()
 
     @Operation
