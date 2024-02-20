@@ -1,5 +1,6 @@
 package stack
 
+import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 
 /**
@@ -29,7 +30,7 @@ class EliminationStack<T>(val capacity: Int) : TreiberStack<T>() {
     override fun pop(): T? {
         while (true) {
             val expectedValue = head.get()
-            val newValue = expectedValue?.next
+            val newValue = expectedValue?.next ?: throw EmptyStackException()
 
             if (head.compareAndSet(expectedValue, newValue))
                 return expectedValue?.value
