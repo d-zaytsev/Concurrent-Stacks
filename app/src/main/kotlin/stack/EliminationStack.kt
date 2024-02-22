@@ -30,6 +30,8 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
     private val exchangersArray = Array(capacity) { AtomicReference(Exchanger<T>()) }
     private fun randomExchanger() = exchangersArray.random()
     override fun pop(): T? {
+        var attempt = 0
+
         while (true) {
             val expectedValue = head.get()
             val newValue = expectedValue?.next
@@ -37,45 +39,33 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
             if (head.compareAndSet(expectedValue, newValue))
                 return expectedValue?.value
             else {
+                Thread.sleep(exp.delay(attempt))
+                attempt++
                 // difference from Treiber stack
                 // we will exchange information with PUSH
                 val exchanger = randomExchanger()
-                var expectedExchanger = exchanger.get()
+                val expectedExchanger = exchanger.get()
 
-                if (expectedExchanger.state == ExchangerState.BUSY) // POP only needs WAITING
-                    continue
-                else if (expectedExchanger.state == ExchangerState.EMPTY) {
-                    // try to wait
-                    var attempt = 0 // cur attempt to read exchanger state
-                    while (true) {
-                        expectedExchanger = exchanger.get() // our exchanger can change O_O
-                        if (expectedExchanger.state == ExchangerState.WAITING) // wait for WAITING
-                            break
-
-                        val delay = exp.delay(attempt) //calculate delay
-                        if (delay >= exp.maxDelay) {
-                            // exit from loop, we can't wait more
-                            break
-                        } else {
-                            // or we can wait more
-                            Thread.sleep(delay)
-                            attempt++
-                        }
-                    }
-                } else {
+                if (expectedExchanger.state == ExchangerState.WAITING) // POP only needs WAITING
+                {
                     // transform to BUSY
                     if (exchanger.compareAndSet(
                             expectedExchanger,
                             Exchanger(state = ExchangerState.BUSY)
                         )
                     ) // try to update exchanger
-                        return expectedExchanger.value // return value from PUSH
+                    {
+                        return expectedExchanger.value // return value from PUSH or continue
+                    }
                 }
+
             }
+
         }
     }
 
     override fun push(item: T) {
+        var attempt = 0 // cur attempt to read exchanger state
         while (true) {
             val expectedValue = head.get()
             val newValue = StackNode(item, expectedValue)
@@ -88,38 +78,27 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
                 val exchanger = randomExchanger()
                 var expectedExchanger = exchanger.get()
 
-                if (expectedExchanger.state != ExchangerState.EMPTY)
-                    return
+                if (expectedExchanger.state == ExchangerState.EMPTY) {
+                    //transform to WAITING
+                    if (exchanger.compareAndSet(
+                            expectedExchanger,
+                            Exchanger(value = item, state = ExchangerState.WAITING)
+                        )
+                    ) {
+                        Thread.sleep(exp.delay(attempt))
+                        attempt++
 
-                //transform to WAITING
-                if (exchanger.compareAndSet(
-                        expectedExchanger,
-                        Exchanger(value = item, state = ExchangerState.WAITING)
-                    )
-                ) {
-                    // waiting corresponding POP operation for exchange
-                    var attempt = 0 // cur attempt to read exchanger state
-                    while (true) {
-                        expectedExchanger = exchanger.get() // our exchanger can change O_O
-                        if (expectedExchanger.state == ExchangerState.BUSY) // wait for BUSY
-                            break
+                        expectedExchanger = exchanger.get()
 
-                        // if no BUSY
-                        val delay = exp.delay(attempt) //calculate delay
-                        if (delay >= exp.maxDelay) {
-                            // exit from loop, we can't wait more
-                            if (exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY)))
-                                break // if state was changed -> continue
-                        } else {
-                            // or we can wait more
-                            Thread.sleep(delay)
-                            attempt++
-                        }
+                        if (!exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY)))
+                            return
+                        if (expectedExchanger.state == ExchangerState.BUSY)
+                            return
+
                     }
-                    // clean
-                    exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY))
                 }
             }
+
         }
     }
 
