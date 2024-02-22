@@ -9,8 +9,8 @@ import stack.EliminationStack
 
 class EliminationTest {
 
-    private val threadCount = 2
-    private val stack = EliminationStack<Int>(threadCount, 1, 500)
+    private val threadCount = 5
+    private val stack = EliminationStack<Int>(threadCount, 1, 10)
 
     @Operation
     fun pop() = if (!stack.empty()) stack.pop() else null
@@ -25,12 +25,11 @@ class EliminationTest {
     fun modelCheck() = ModelCheckingOptions()
         .threads(threadCount)
         .actorsPerThread(2)
-        .iterations(5)
+        .iterations(3)
         .check(this::class)
 
     @Test
     fun progressCheck() = ModelCheckingOptions().checkObstructionFreedom().check(this::class)
-
 
     @Test
     fun `Simple test`() {

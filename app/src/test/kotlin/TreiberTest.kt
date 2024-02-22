@@ -19,7 +19,9 @@ class TreiberTest {
     @StateRepresentation
     fun stateRepresentation() = stack.toString()
     @Test
-    fun modelCheck() = ModelCheckingOptions().check(this::class)
+    fun modelCheck() = ModelCheckingOptions().threads(2).check(this::class)
+    @Test
+    fun progressCheck() = ModelCheckingOptions().checkObstructionFreedom().check(this::class)
 
     @Test
     fun `Simple test`() {
