@@ -1,6 +1,5 @@
 package stack
 
-import java.util.*
 import java.util.concurrent.atomic.AtomicReference
 
 class StackNode<T>(val value: T, val next: StackNode<T>?)
@@ -19,10 +18,10 @@ open class TreiberStack<T> {
     open fun pop(): T? {
         while (true) {
             val expectedValue = head.get() // What we expect the head will be
-            val newValue = expectedValue?.next ?: throw EmptyStackException()
+            val newValue = expectedValue?.next
 
             if (head.compareAndSet(expectedValue, newValue)) // if (what we expect) = (what we have)
-                return expectedValue.value
+                return expectedValue?.value
         }
     }
 

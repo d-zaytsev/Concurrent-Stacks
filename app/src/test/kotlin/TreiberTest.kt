@@ -11,7 +11,7 @@ class TreiberTest {
     private val stack = TreiberStack<Int>()
 
     @Operation
-    fun pop() = if (!stack.empty()) stack.pop() else null
+    fun pop() = stack.pop()
 
     @Operation
     fun push(item: Int) = stack.push(item)
@@ -40,5 +40,11 @@ class TreiberTest {
         s.push(3)
 
         Assert.assertEquals("3 -> 2 -> 1.", s.toString())
+    }
+
+    @Test
+    fun `Null test`() {
+        val s = TreiberStack<Int>()
+        Assert.assertEquals(null, s.pop())
     }
 }
