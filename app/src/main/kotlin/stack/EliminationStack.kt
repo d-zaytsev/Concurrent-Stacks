@@ -36,31 +36,31 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
             val expectedValue = head.get()
             val newValue = expectedValue?.next
 
+            // each thread tries to perform its operation on the central stack object
             if (head.compareAndSet(expectedValue, newValue))
                 return expectedValue?.value
             else {
-                Thread.sleep(exp.delay(attempt))
-                attempt++
-                // difference from Treiber stack
-                // we will exchange information with PUSH
-                val exchanger = randomExchanger()
+                // if this attempt fails,
+                // thread goes through the collision layer
+                val exchanger = randomExchanger() // choose random location in array
                 val expectedExchanger = exchanger.get()
 
-                if (expectedExchanger.state == ExchangerState.WAITING) // POP only needs WAITING
+                if (expectedExchanger.state == ExchangerState.WAITING) // two threads can collide only if they have opposing operations
                 {
-                    // transform to BUSY
+                    // tries to change state
                     if (exchanger.compareAndSet(
                             expectedExchanger,
                             Exchanger(state = ExchangerState.BUSY)
                         )
-                    ) // try to update exchanger
-                    {
-                        return expectedExchanger.value // return value from PUSH or continue
+                    ) {
+                        return expectedExchanger.value // return value from PUSH
+                        //If it fails, it retries until success
                     }
                 }
 
+                Thread.sleep(exp.delay(attempt))
+                attempt++
             }
-
         }
     }
 
@@ -85,15 +85,37 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
                             Exchanger(value = item, state = ExchangerState.WAITING)
                         )
                     ) {
+                        // thread waits for collision
                         Thread.sleep(exp.delay(attempt))
                         attempt++
 
                         expectedExchanger = exchanger.get()
 
-                        if (!exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY)))
+                        if (expectedExchanger.state == ExchangerState.BUSY) {
+                            expectedExchanger = exchanger.get()
+                            if (!exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY)))
+                                throw IllegalStateException("Someone update my BUSY item -_-")
                             return
-                        if (expectedExchanger.state == ExchangerState.BUSY)
-                            return
+                        } else {
+                            expectedExchanger = exchanger.get()
+                            if (!exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY))) {
+                                // If our entry cannot be cleared, it follows
+                                // that our thread has been collided with
+                                if (!exchanger.compareAndSet(
+                                        expectedExchanger,
+                                        Exchanger(state = ExchangerState.EMPTY)
+                                    )
+                                )
+                                    throw IllegalStateException("Someone update my BUSY item -_-")
+                                return
+                            }
+
+                            // If no other thread
+                            // collides with our thread during its waiting period,
+                            // we clear the elimination array and start from the beginning
+
+                            continue
+                        }
 
                     }
                 }

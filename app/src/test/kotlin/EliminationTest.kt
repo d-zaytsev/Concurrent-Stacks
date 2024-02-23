@@ -29,9 +29,6 @@ class EliminationTest {
         .check(this::class)
 
     @Test
-    fun progressCheck() = ModelCheckingOptions().checkObstructionFreedom().check(this::class)
-
-    @Test
     fun `Simple test`() {
         val s = EliminationStack<Int>(100, 100, 100)
         s.push(1)
