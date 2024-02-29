@@ -19,18 +19,14 @@ private class Exchanger<T>(val value: T? = null, val state: ExchangerState = Exc
 /**
  * Lock-free elimination back-off stack.
  */
-class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : TreiberStack<T>() {
+class EliminationStack<T>(capacity: Int, private val maxDelay: Long) : TreiberStack<T>() {
 
     override val head = AtomicReference<StackNode<T>?>(null)
-
-    // Backoff
-    private val exp = ExponentialStrategy(startDelay, maxDelay)
 
     // We need an elimination array. It will be used to exchange information between threads.
     private val exchangersArray = Array(capacity) { AtomicReference(Exchanger<T>()) }
     private fun randomExchanger() = exchangersArray.random()
     override fun pop(): T? {
-        var attempt = 0
 
         while (true) {
             val expectedValue = head.get()
@@ -40,6 +36,7 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
             if (head.compareAndSet(expectedValue, newValue))
                 return expectedValue?.value
             else {
+
                 // if this attempt fails,
                 // thread goes through the collision layer
                 val exchanger = randomExchanger() // choose random location in array
@@ -58,14 +55,12 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
                     }
                 }
 
-                Thread.sleep(exp.delay(attempt))
-                attempt++
             }
         }
+
     }
 
     override fun push(item: T) {
-        var attempt = 0 // cur attempt to read exchanger state
         while (true) {
             val expectedValue = head.get()
             val newValue = StackNode(item, expectedValue)
@@ -85,20 +80,28 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
                             Exchanger(value = item, state = ExchangerState.WAITING)
                         )
                     ) {
-                        // thread waits for collision
-                        Thread.sleep(exp.delay(attempt))
-                        attempt++
+
+                        Thread.sleep(30)
 
                         expectedExchanger = exchanger.get()
 
                         if (expectedExchanger.state == ExchangerState.BUSY) {
-                            expectedExchanger = exchanger.get()
-                            if (!exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY)))
+                            if (!exchanger.compareAndSet(
+                                    expectedExchanger,
+                                    Exchanger(state = ExchangerState.EMPTY)
+                                )
+                            ) {
                                 throw IllegalStateException("Someone update my BUSY item -_-")
-                            return
+                            }
+
+                            return // complete collide
+
                         } else {
-                            expectedExchanger = exchanger.get()
-                            if (!exchanger.compareAndSet(expectedExchanger, Exchanger(state = ExchangerState.EMPTY))) {
+                            if (!exchanger.compareAndSet(
+                                    expectedExchanger,
+                                    Exchanger(state = ExchangerState.EMPTY)
+                                )
+                            ) {
                                 // If our entry cannot be cleared, it follows
                                 // that our thread has been collided with
                                 if (!exchanger.compareAndSet(
@@ -108,13 +111,11 @@ class EliminationStack<T>(capacity: Int, startDelay: Long, maxDelay: Long) : Tre
                                 )
                                     throw IllegalStateException("Someone update my BUSY item -_-")
                                 return
+                            } else {
+                                // If no other thread
+                                // collides with our thread during its waiting period,
+                                // we clear the elimination array and start from the beginning
                             }
-
-                            // If no other thread
-                            // collides with our thread during its waiting period,
-                            // we clear the elimination array and start from the beginning
-
-                            continue
                         }
 
                     }
