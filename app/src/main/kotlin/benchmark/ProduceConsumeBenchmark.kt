@@ -14,12 +14,17 @@ class ProduceConsumeBenchmark(private val stack: TreiberStack<Int>, private val 
         require(stack.empty())
     }
 
+    @Volatile
+    var run = false
+
     fun perform(time: Long, threadCount: Int): Int {
-        var run = false
+        run = false
         val atomicCounter = AtomicInteger()
+
         val threadArray = Array(threadCount) {
             thread(start = true) {
                 while (!run) {}
+
                 while (run) {
                     stack.push(1)
                     stack.pop()
@@ -33,9 +38,9 @@ class ProduceConsumeBenchmark(private val stack: TreiberStack<Int>, private val 
         run = true
 
         Thread.sleep(time)
-
         // Wait for all threads to finish
         run = false
+        threadArray.forEach { it.join() }
 
         return atomicCounter.get()
 
