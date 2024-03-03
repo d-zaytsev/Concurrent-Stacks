@@ -1,4 +1,3 @@
-
 import org.jetbrains.kotlinx.lincheck.annotations.Operation
 import org.jetbrains.kotlinx.lincheck.annotations.StateRepresentation
 import org.jetbrains.kotlinx.lincheck.check
@@ -19,10 +18,14 @@ class TreiberTest {
 
     @StateRepresentation
     fun stateRepresentation() = stack.toString()
+
     @Test
-    fun modelCheck() = ModelCheckingOptions().check(this::class)
+    fun modelCheck() =
+        ModelCheckingOptions().checkObstructionFreedom().sequentialSpecification(SequentialStack::class.java)
+            .check(this::class)
+
     @Test
-    fun stressCheck() = StressOptions().check(this::class)
+    fun stressCheck() = StressOptions().sequentialSpecification(SequentialStack::class.java).check(this::class)
 
     @Test
     fun `Simple test`() {
@@ -30,11 +33,12 @@ class TreiberTest {
         s.push(1)
         s.push(2)
         s.push(3)
-        s.pop()
-        s.pop()
 
+        Assert.assertEquals(3, s.pop())
+        Assert.assertEquals(2, s.pop())
         Assert.assertEquals(1, s.pop())
     }
+
     @Test
     fun `Representation test`() {
         val s = TreiberStack<Int>()
