@@ -3,37 +3,38 @@ package org.example
 import benchmark.ProduceConsumeBenchmark
 import stack.EliminationStack
 import stack.TreiberStack
+import kotlin.math.roundToInt
 
 fun main() {
 
-    val threadCountArray = arrayOf(8)
+    // Stacks settings
+    val threadCount = 16
+    val eliminationStackDelay = 100L
+
+    // Tests settings
     val time = 1000L
     val workload = 100L
-    val repeats = 1
-
-    println("### Treiber Stack: ")
-
-    repeat(repeats) {
-        println(" --- ${it + 1} try ---")
-
-        for (threadCount in threadCountArray) {
-            val stack = TreiberStack<Int>()
-            val benchmark = ProduceConsumeBenchmark(stack, workload)
-
-            println("$threadCount: ${benchmark.perform(time, threadCount)}")
-        }
-    }
+    val repeats = 5
 
     println("\n### Elimination Stack: ")
 
-    repeat(repeats) {
-        println(" --- ${it + 1} try ---")
+    val eliminationStack = EliminationStack<Int>(threadCount, eliminationStackDelay)
+    val eliminationBenchmark = ProduceConsumeBenchmark(eliminationStack, workload)
 
-        for (threadCount in threadCountArray) {
-            val stack = EliminationStack<Int>(32, 1)
-            val benchmark = ProduceConsumeBenchmark(stack, workload)
-
-            println("$threadCount: ${benchmark.perform(time, threadCount)}")
-        }
+    val results = Array(repeats) {
+        eliminationBenchmark.perform(time, threadCount)
     }
+
+    println("result: ${results.average().roundToInt()} ops")
+
+    println("### Treiber Stack: ")
+
+    val treiberStack = TreiberStack<Int>()
+    val treiberBenchmark = ProduceConsumeBenchmark(treiberStack, workload)
+
+    val treiberResults = Array(repeats) {
+        treiberBenchmark.perform(time, threadCount)
+    }
+
+    println("result: ${treiberResults.average().roundToInt()} ops")
 }

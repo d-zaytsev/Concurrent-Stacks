@@ -1,7 +1,6 @@
 package benchmark
 
 import stack.TreiberStack
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.concurrent.thread
 import kotlin.random.Random
 
@@ -18,17 +17,19 @@ class ProduceConsumeBenchmark(private val stack: TreiberStack<Int>, private val 
     var run = false
 
     fun perform(time: Long, threadCount: Int): Int {
+
         run = false
-        val atomicCounter = AtomicInteger()
+        val operationsArray = Array(threadCount) { 0 }
 
         val threadArray = Array(threadCount) {
             thread(start = true) {
-                while (!run) {}
+                while (!run) {
+                }
 
                 while (run) {
                     stack.push(1)
                     stack.pop()
-                    atomicCounter.addAndGet(2)
+                    operationsArray[it] += 2
                     Thread.sleep(Random.nextLong(0, workload))
                 }
             }
@@ -42,7 +43,7 @@ class ProduceConsumeBenchmark(private val stack: TreiberStack<Int>, private val 
         run = false
         threadArray.forEach { it.join() }
 
-        return atomicCounter.get()
+        return operationsArray.sum()
 
     }
 }
