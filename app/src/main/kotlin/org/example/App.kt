@@ -8,33 +8,25 @@ import kotlin.math.roundToInt
 fun main() {
 
     // Stacks settings
-    val threadCount = 16
-    val eliminationStackDelay = 100L
+    val threadCount = 8
 
     // Tests settings
-    val time = 1000L
+    val time = 5000L
     val workload = 100L
     val repeats = 5
 
-    println("\n### Elimination Stack: ")
+    val stackArr = arrayOf(TreiberStack<Int>(), EliminationStack(4, 50))
+    println("Stack 1: Treibers Stack (without backoff)\nStack 2: Elimination Backoff Stack\n")
 
-    val eliminationStack = EliminationStack<Int>(threadCount, eliminationStackDelay)
-    val eliminationBenchmark = ProduceConsumeBenchmark(eliminationStack, workload)
+    for (i in stackArr.indices) {
+        println("### Stack ${i + 1}: ")
 
-    val results = Array(repeats) {
-        eliminationBenchmark.perform(time, threadCount)
+        val bench = ProduceConsumeBenchmark(stackArr[i], workload)
+
+        val results = Array(repeats) {
+            bench.perform(time, threadCount)
+        }
+
+        println("result: ${results.average().roundToInt()} ops")
     }
-
-    println("result: ${results.average().roundToInt()} ops")
-
-    println("### Treiber Stack: ")
-
-    val treiberStack = TreiberStack<Int>()
-    val treiberBenchmark = ProduceConsumeBenchmark(treiberStack, workload)
-
-    val treiberResults = Array(repeats) {
-        treiberBenchmark.perform(time, threadCount)
-    }
-
-    println("result: ${treiberResults.average().roundToInt()} ops")
 }
