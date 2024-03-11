@@ -17,7 +17,6 @@ class ProduceConsumeBenchmark(private val stack: TreiberStack<Int>, private val 
     var run = false
 
     fun perform(time: Long, threadCount: Int): Int {
-
         run = false
         val operationsArray = Array(threadCount) { 0 }
 

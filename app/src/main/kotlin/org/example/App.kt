@@ -11,11 +11,11 @@ fun main() {
     val threadCount = 8
 
     // Tests settings
-    val time = 5000L
+    val time = 2000L
     val workload = 100L
     val repeats = 5
 
-    val stackArr = arrayOf(TreiberStack<Int>(), EliminationStack(4, 50))
+    val stackArr = arrayOf(TreiberStack<Int>(), EliminationStack(8, 20))
     println("Stack 1: Treibers Stack (without backoff)\nStack 2: Elimination Backoff Stack\n")
 
     for (i in stackArr.indices) {

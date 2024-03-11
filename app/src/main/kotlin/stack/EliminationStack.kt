@@ -19,7 +19,7 @@ private class Exchanger<T>(val value: T? = null, val state: ExchangerState = Exc
 /**
  * Lock-free elimination back-off stack.
  */
-class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : TreiberStack<T>() {
+class EliminationStack<T>(capacity: Int, private val maxAttempts: Int) : TreiberStack<T>() {
 
     override val head = AtomicReference<StackNode<T>?>(null)
 
@@ -27,13 +27,10 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
     private val exchangersArray = Array(capacity) { AtomicReference(Exchanger<T>()) }
     private fun randomExchanger() = exchangersArray.random()
     override fun pop(): T? {
-        if (head.get() == null)
-            return null
-
         while (true) {
             val stackRes = tryPerformStackOp()
-            if (stackRes != null)
-                return stackRes
+            if (stackRes.first) // success with CAS
+                return stackRes.second // value
 
             for (attempt in 0 until maxAttempts) {
                 val exchanger = randomExchanger()
@@ -41,8 +38,9 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
 
                 if (expected.state == ExchangerState.EMPTY) {
                     if (tryCollision(exchanger, attempts = maxAttempts - attempt)) {
+                        val item = exchanger.get().value
                         if (!finishCollision(exchanger)) throw Exception("Someone clear my BUSY :(")
-                        return expected.value
+                        return item
                     }
                 } else if (expected.state == ExchangerState.WAITING && expected.value != null) {
                     if (exchanger.compareAndSet(expected, Exchanger(state = ExchangerState.BUSY)))
@@ -78,11 +76,11 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
     /**
      * default POP with CAS
      */
-    private fun tryPerformStackOp(): T? {
-        val expectedValue = head.get()
-        val newValue = expectedValue?.next
+    private fun tryPerformStackOp(): Pair<Boolean, T?> {
+        val expectedValue = head.get() ?: return Pair(true, null)
+        val newValue = expectedValue.next
 
-        return if (head.compareAndSet(expectedValue, newValue)) expectedValue?.value else null
+        return if (head.compareAndSet(expectedValue, newValue)) Pair(true, expectedValue.value) else Pair(false, null)
     }
 
     /**
@@ -101,7 +99,7 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
     private fun tryCollision(
         randomExchanger: AtomicReference<Exchanger<T>>,
         value: T? = null,
-        attempts: Long
+        attempts: Int
     ): Boolean {
 
         // set WAITING
@@ -115,16 +113,13 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
         )
             return false
 
-        var attempt = 0
-        while (attempt < attempts) {
+        repeat(attempts) {
             exchanger = randomExchanger.get()
-
             if (exchanger.state == ExchangerState.BUSY)
                 return true
-            attempt++
         }
-
-        return false
+        // try to return back
+        return !randomExchanger.compareAndSet(exchanger, Exchanger(state = ExchangerState.EMPTY))
     }
 
     /**
