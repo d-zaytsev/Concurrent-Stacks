@@ -35,19 +35,21 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
             if (stackRes != null)
                 return stackRes
 
-            val exchanger = randomExchanger()
-            val expEx = exchanger.get()
+            for (attempt in 0 until maxAttempts) {
+                val exchanger = randomExchanger()
+                val expected = exchanger.get()
 
-            if (expEx.state == ExchangerState.EMPTY) {
-                if (tryCollision(exchanger, attempts = maxAttempts)) {
-                    if (!finishCollision(exchanger)) throw Exception("Someone clear my BUSY (((")
-                    return exchanger.get().value
+                if (expected.state == ExchangerState.EMPTY) {
+                    if (tryCollision(exchanger, attempts = maxAttempts - attempt)) {
+                        if (!finishCollision(exchanger)) throw Exception("Someone clear my BUSY :(")
+                        return expected.value
+                    }
+                } else if (expected.state == ExchangerState.WAITING && expected.value != null) {
+                    if (exchanger.compareAndSet(expected, Exchanger(state = ExchangerState.BUSY)))
+                        return expected.value
                 }
-            } else if (expEx.state == ExchangerState.WAITING) {
-                if (exchanger.compareAndSet(expEx, Exchanger(state = ExchangerState.BUSY)))
-                    return expEx.value
-            }
 
+            }
         }
 
     }
@@ -57,16 +59,18 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
             if (tryPerformStackOp(item)) return
 
             val exchanger = randomExchanger()
-            val expEx = exchanger.get()
+            val expected = exchanger.get()
 
-            if (expEx.state == ExchangerState.EMPTY) {
-                if (tryCollision(exchanger, value = item, attempts = maxAttempts)) {
-                    if (!finishCollision(exchanger)) throw Exception("Someone clear my BUSY (((")
-                    return
+            for (attempt in 0 until maxAttempts) {
+                if (expected.state == ExchangerState.EMPTY) {
+                    if (tryCollision(exchanger, value = item, attempts = maxAttempts - attempt)) {
+                        if (!finishCollision(exchanger)) throw Exception("Someone clear my BUSY (((")
+                        return
+                    }
+                } else if (expected.state == ExchangerState.WAITING && expected.value == null) {
+                    if (exchanger.compareAndSet(expected, Exchanger(state = ExchangerState.BUSY, value = item)))
+                        return
                 }
-            } else if (expEx.state == ExchangerState.WAITING) {
-                if (exchanger.compareAndSet(expEx, Exchanger(state = ExchangerState.BUSY, value = item)))
-                    return
             }
         }
     }
@@ -132,5 +136,4 @@ class EliminationStack<T>(capacity: Int, private val maxAttempts: Long) : Treibe
             return false
         return randomExchanger.compareAndSet(exchanger, Exchanger(state = ExchangerState.EMPTY))
     }
-
 }
